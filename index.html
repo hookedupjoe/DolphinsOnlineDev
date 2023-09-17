@@ -58,7 +58,7 @@
   <script src="/lib/actionapp/actionapp.js?open"></script>
   
   <!-- For locally in-server deployed only -->
-  <script src="/appinit.js"></script>
+  
 
   <script src="/lib/actionapp/nosql-data-manager.js"></script>
   <script src="/lib/actionapp/object-manager-plugin.js"></script>
@@ -76,7 +76,14 @@
   
 
   <!-- OPTIONAL - JS Libraries -->
-  
+  <script type="module">  import AudioMotionAnalyzer from '/lib/audioMotionAnalyzer/exports.js';
+	window.AudioMotionAnalyzer = AudioMotionAnalyzer;
+	</script>
+	<script>
+	 ActionAppCore.useThreeJS = true;
+	 ActionAppCore.three.addonBase = "/lib/threejs/addons/"
+	</script>
+	<script src="/lib/headtrackr/headtrackr.js"></script>
   
   <!-- Application - Modules, etc -->
   <script src="/lib/actionapp/app-module.js"></script>

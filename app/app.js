@@ -87,7 +87,7 @@
 
       var tmpRequired = {}
 
-      ThisApp.init({  pages: tmpPageNames, plugins: tmpPluginNames, required: tmpRequired }).then(function (theReply) {
+      ThisApp.init({ customHeader: true,  pages: tmpPageNames, plugins: tmpPluginNames, required: tmpRequired }).then(function (theReply) {
         ThisApp.getByAttr$({ appuse: "app-loader" }).remove();
 
         $.extend(ThisApp.common, {})
