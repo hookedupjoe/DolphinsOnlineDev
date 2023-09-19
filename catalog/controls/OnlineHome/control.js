@@ -24,12 +24,117 @@
       ctl: "spot",
       name: "body",
       text: ""
+    },{
+      ctl: "control",
+      hidden: true,
+      controlname: "AudioMotionAnalyzer",
+      name: "audiomotion",
+      source: "__app"
     }]
   }
 
   var ControlCode = {};
 
+  
+  ControlCode.startMic = startMic
+  
+  function startMic(){
+    this.parts.audiomotion.startWithMic();
+    this.micInit = true;
+    this.startMusicResponse();
+  }
 
+  function RGBtoHSV(r, g, b) {
+    if (arguments.length === 1) {
+      g = r.g,
+      b = r.b,
+      r = r.r;
+    }
+    var max = Math.max(r, g, b),
+    min = Math.min(r, g, b),
+    d = max - min,
+    h,
+    s = (max === 0 ? 0: d / max),
+    v = max / 255;
+
+    switch (max) {
+      case min: h = 0; break;
+      case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+      case g: h = (b - r) + d * 2; h /= 6 * d; break;
+      case b: h = (r - g) + d * 4; h /= 6 * d; break;
+    }
+
+    return {
+      h: h,
+      s: s,
+      v: v
+    };
+  }
+  function HSVtoRGB(h, s, v) {
+    let f = (n, k = (n+h/60)%6) => v - v*s*Math.max(Math.min(k, 4-k, 1), 0);
+    var tmpR = f(5);
+    var tmpG = f(3);
+    var tmpB = f(1);
+
+    return {
+      r: tmpR*255,
+      g: tmpG*255,
+      b: tmpB*255
+    };
+  }
+
+  var hueOffset = 20;
+  var brtOffset = 10;
+  var allColors = [];
+
+  
+  ControlCode.offsetColorItem = offsetColorItem;
+  function offsetColorItem(theItem, theOffset) {
+    var tmpSpecs = this.colorIndex[theItem];
+    var tmpElem = tmpSpecs.el
+    var tmpOrig = tmpSpecs.colors;
+    
+      var tmpH = tmpOrig.h;
+      var tmpS = tmpOrig.s/255;
+      var tmpV = tmpOrig.v/255;
+      
+      tmpS += theOffset;
+      if( tmpS > 1){
+        tmpS = 1
+      } else if( tmpS < 0){
+        tmpS = 0
+      }
+
+      var tmpNewRGB = HSVtoRGB(tmpH, tmpS, tmpV)
+      var tmpNewRGBFill = 'rgb(' + tmpNewRGB.r + ',' + tmpNewRGB.g + ',' + tmpNewRGB.b + ')';
+      //console.log('tmpEntry',tmpNewRGBFill);
+      tmpElem.css('fill', tmpNewRGBFill);
+  }
+
+  
+    ControlCode.initColors = initColors;
+  function initColors(){
+    this.colorIndex = {};
+    
+    this.colorElems = ThisApp.getByAttr$({
+        appuse: "charcolor"
+    });
+    
+    for (var i = 0; i < this.colorElems.length; i++) {
+      var tmpEntry = $(this.colorElems[i]);
+      var tmpID = tmpEntry.attr('id');
+      var tmpFillRGB = tmpEntry.css('fill');
+      var tmpColors = getColorsFromFillValue(tmpFillRGB);
+      
+      this.colorIndex[tmpID] = {
+        el: tmpEntry,
+        colors: tmpColors
+      }
+    }
+    
+    console.log('this.elemIndex',this.elemIndex);
+  }
+  
   ControlCode.initElems = initElems;
   function initElems() {
     this.elemIndex = {};
@@ -40,6 +145,11 @@
     for (var i = 0; i < this.charElems.length; i++) {
       var tmpEntry = $(this.charElems[i]);
       var tmpID = tmpEntry.attr('id');
+      
+      var tmpFillRGB = tmpEntry.css('fill');
+      var tmpColors = getColorsFromFillValue(tmpFillRGB);
+      tmpEntry.data('colors',tmpColors);
+
       _charElems[tmpID] = tmpEntry;
     }
     this.charIndex = _charElems;
@@ -64,11 +174,11 @@
   //=== ToDo: Refactor and change structure ..
   var _charDetails = {
     
-    leftarm: {
-      x: 440,
-      y: 218
+    part_sun: {
+      x: 0,
+      y: 0
     },
-    rightarm: {
+    part_dolphin: {
       x: 300,
       y: 218
     },
@@ -139,15 +249,28 @@
   
     var tmpAmt = (bandVal(13) + bandVal(14) + bandVal(15) + bandVal(16) + bandVal(17) + bandVal(18) + bandVal(19));
     tmpAmt /= 7;
-    tmpAmt = this.mapNumber(tmpAmt, 0, 75, 40, 230);
+    tmpAmt = this.mapNumber(tmpAmt, 30, 120, 0, 20);
     
-    if( tmpAmt > 255 ){
-      tmpAmt = 255;
+    if( tmpAmt > 20 ){
+      tmpAmt = 20;
     }
-    if( tmpAmt < 40 ){
-      tmpAmt = 40;
+    if( tmpAmt < 0 ){
+      tmpAmt = 0;
     }
-    
+    tmpAmt = Math.round(tmpAmt);
+    var tmpShowAmt = '' + tmpAmt;
+    if( tmpAmt < 10){
+      tmpShowAmt = '0' + tmpShowAmt;
+    }
+    var tmpAmtS = '1.'+(tmpShowAmt);
+    var tmpScaleAmt = tmpAmtS;
+    var tmpScale = 'scale(' + tmpScaleAmt + ',' + tmpScaleAmt + ')';
+    var tmpTranslate = 'translate(-' + tmpAmt + ',-' + tmpAmt + ')';
+    var tmpPart = this.charIndex.part_sun.get(0)
+    tmpPart.setAttribute("transform", tmpTranslate + ' ' + tmpScale)
+
+//console.log(tmpTranslate + ' ' + tmpScale)
+
     //this.pullString({name:'mouth', amount:tmpAmt,  string: 'updown'});
 
   }
@@ -157,13 +280,13 @@
   var ThisControl;
   
 
-  var reactionFunction = false;
-  ControlCode.runReaction = function(theName) {
-    var tmpFunc = ThisControl[theName];
-    if( !(tmpFunc) ) return;
-    tmpFunc = tmpFunc.bind(this);
-    reactionFunction = tmpFunc;
-  }
+  // var reactionFunction = false;
+  // ControlCode.runReaction = function(theName) {
+  //   var tmpFunc = ThisControl[theName];
+  //   if( !(tmpFunc) ) return;
+  //   tmpFunc = tmpFunc.bind(this);
+  //   reactionFunction = tmpFunc;
+  // }
   
   
   // ControlCode.runReactionAction(theParams, theTarget) {
@@ -173,14 +296,12 @@
   
   ControlCode.startMusicResponse = startMusicResponse;
   function startMusicResponse(){
-    // update the display based on data
+    // update the display based on data'
+    var self = this;
     this.danceInterval = d3.interval(function () {
      
       try {
-        if((reactionFunction)){
-          reactionFunction();
-        }
-        
+        self.reactionSpeak();
     } catch (ex) {
         //temp -> 
         if( watchDog1++ > 10){
@@ -336,6 +457,8 @@
 
   }
 
+
+
   ControlCode.transformItem = transformItem;
   function transformItem(theItem, theTransform) {
     var tmpSpecs = _charDetails[theItem];
@@ -380,6 +503,26 @@
   }
 
 
+  function getColorsFromFillValue(theCSSValue){
+    var tmpColors = theCSSValue.replace('rgb(', '').replace(')', '').replace(' ', '');
+      tmpColors = tmpColors.split(',');
+      var tmpR = parseInt(tmpColors[0]);
+      var tmpG = parseInt(tmpColors[1]);
+      var tmpB = parseInt(tmpColors[2]);
+      var tmpColors = RGBtoHSV(tmpR, tmpG, tmpB);
+
+      tmpColors.r = tmpR;
+      tmpColors.g = tmpG;
+      tmpColors.b = tmpB;
+      
+      tmpColors.h = Math.round(tmpColors.h * 360);
+      tmpColors.s = Math.round(tmpColors.s * 255 );
+      tmpColors.v = Math.round(tmpColors.v * 255 );
+      
+      return tmpColors
+  }
+  
+
   ControlCode._onInit = _onInit;
   function _onInit() {
     //-- For debugging only
@@ -392,10 +535,14 @@
 
     this.loadSpot('body', {}, 'LogoSVG');
     this.initElems();
+    this.initColors();
+    this.colorIndex.color_outline.el.css('fill', 'transparent')
+    
     //this.getSpot('body').css('background-color', 'green');
     ThisApp.util.clearToTop(this.getSpot$('body').get(0));
 
   }
+  
 
 
   var ThisControl = {

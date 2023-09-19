@@ -62,7 +62,7 @@ thisPageSpecs.required = {
         ThisPage.initOnFirstLoad().then(
             function () {
                 //~_onFirstLoad//~
-
+window.ThisPageNow = ThisPage
 //~_onFirstLoad~//~
                 ThisPage._onActivate();
             }
@@ -84,7 +84,10 @@ thisPageSpecs.required = {
 
     //------- --------  --------  --------  --------  --------  --------  -------- 
     //~YourPageCode//~
-
+actions.startMic = startMic;
+function startMic(){
+  ThisPage.parts.center.startMic();  
+}
 //~YourPageCode~//~
 
 })(ActionAppCore, $);
